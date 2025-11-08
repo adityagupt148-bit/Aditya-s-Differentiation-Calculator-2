@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Equation Differentiator — Mobile</title>
+
+<!-- LOCAL FILES recommended for offline: put these files in same folder as this HTML -->
+<!-- math.min.js (math.js) -->
+<script src="./math.min.js"></script>
+<!-- Chart.js -->
+<script src="./chart.umd.min.js"></script>
+<!-- Chart zoom plugin -->
+<script src="./chartjs-plugin-zoom.min.js"></script>
+<!-- KaTeX (CSS + JS) -->
+<link rel="stylesheet" href="./katex.min.css">
+<script src="./katex.min.js"></script>
+<!-- jsPDF -->
+<script src="./jspdf.umd.min.js"></script>
+
+<!-- CDN fallback (if local not available) -->
+<script>
+if (!window.math) {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"><\/script>');
+}
+if (!window.Chart) {
+  document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>');
+}
+if (!window.Chart || !Chart.register) {
+  /* try plugin CDN fallback */
+  document.write('<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"><\/script>');
+}
+if (!window.katex) {
+  document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"><\/script>');
+}
+if (!window.jspdf) {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>');
+}
+</script>
+
+<style>
+/* MOBILE-FIRST STYLING, optimized for Android phone screens */
+:root{
+  --bg:#0e0f0f;
+  --panel:#0b0b0b;
+  --accent:#14ffb0;
+  --accent2:#ff57c7;
+  --text:#bfc7c3;
+  --muted:#9aa5a0;
+  --card-radius:14px;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#050505,#0d0d0d);color:var(--text);-webkit-font-smoothing:antialiased;}
+.app{
+  width:100%;max-width:420px;margin:0 auto;min-height:100vh;
+  padding:14px 12px 26px;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:10px;
+}
+
+/* top bar */
+.topbar{
+  display:flex;align-items:center;gap:10px;
+  background:transparent;padding:6px 6px;border-radius:12px;
+}
+.app-title{
+  flex:1;text-align:center;font-weight:700;color:var(--accent);font-size:18px;
+}
+.header-right{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+
+/* improved hamburger position: slightly inset, polished */
+.hamburger{
+  width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg, rgba(20,255,176,0.06), rgba(255,255,255,0.01));
+  border:1px solid rgba(20,255,176,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.4);
+  cursor:pointer;
+}
+.hamburger .lines{width:18px;height:14px;position:relative;display:block;}
+.hamburger .lines span{
+  position:absolute;left:0;right:0;height:2px;background:var(--accent);display:block;border-radius:2px;transition:all .24s;
+}
+.hamburger .lines span:nth-child(1){top:0;}
+.hamburger .lines span:nth-child(2){top:6px;}
+.hamburger .lines span:nth-child(3){top:12px;}
+.hamburger.open .lines span:nth-child(1){transform:translateY(6px) rotate(90deg);}
+.hamburger.open .lines span:nth-child(2){opacity:0;}
+.hamburger.open .lines span:nth-child(3){transform:translateY(-6px) rotate(90deg);}
+
+/* card */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:var(--card-radius);padding:12px;border:1px solid rgba(255,255,255,0.03);
+  box-shadow:0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* inputs */
+.field{display:flex;flex-direction:column;gap:8px;}
+.input, .select, .small-input{
+  width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);
+  background:#0a0a0a;color:var(--text);outline:none;font-size:15px;
+}
+.row{display:flex;gap:8px;}
+.small-input{flex:1;}
+
+/* symbol buttons */
+.symbols{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.sym-btn{padding:8px 10px;border-radius:10px;background:transparent;color:var(--accent);
+  border:1px solid rgba(20,255,176,0.12);font-weight:700;cursor:pointer;}
+
+/* main action */
+.btn-primary{
+  width:100%;padding:12px;border-radius:12px;background:linear-gradient(180deg,var(--accent),rgba(20,255,176,0.85));
+  border:none;color:#001;font-weight:800;font-size:16px;cursor:pointer;margin-top:6px;
+}
+
+/* result, steps */
+.result-area{display:flex;flex-direction:column;gap:8px;}
+.result-box{background:linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25));padding:10px;border-radius:10px;color:#fff;}
+.steps{background:#060606;padding:10px;border-radius:10px;color:var(--muted);font-size:13px;}
+
+/* plot */
+.plot-wrap{height:260px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg, rgba(0,0,0,0.2), transparent);padding:6px;margin-top:4px;}
+canvas{width:100% !important;height:100% !important;display:block;}
+
+/* examples, small controls */
+.examples{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+.example-btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,87,199,0.12);background:transparent;color:var(--accent2);font-weight:700;cursor:pointer;}
+
+/* sidebar */
+.sidebar{
+  position:fixed;left:-320px;top:0;width:300px;height:100%;z-index:1200;background:var(--panel);
+  box-shadow:2px 0 16px rgba(0,0,0,0.5);padding:16px;overflow:auto;transition:left .28s ease;
+  border-right:1px solid rgba(255,255,255,0.03);
+}
+.sidebar.open{left:0;}
+.sidebar h2{color:var(--accent);margin-top:0;}
+.sidebar p{color:var(--muted);font-size:13px;line-height:1.35;}
+.sidebar .label{font-weight:700;color:var(--accent2);font-size:13px;margin-top:8px;}
+
+/* small toolbar under topbar */
+.tools{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px;}
+.mode-select{flex:1;margin-right:8px;}
+.icon-btn{padding:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.04);cursor:pointer;color:var(--text);}
+
+/* history & favorites */
+.list{max-height:160px;overflow:auto;margin-top:6px;}
+.list button{width:100%;text-align:left;padding:8px;border-radius:8px;border:0;background:transparent;color:var(--muted);cursor:pointer;}
+
+/* responsive tweaks */
+@media (min-width:420px){
+  .app{padding-left:14px;padding-right:14px;}
+}
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar" aria-hidden="true">
+  <h2>Settings</h2>
+  <div class="label">Theme</div>
+  <select id="themeSelect" class="input">
+    <option value="dark">Neon Dark (default)</option>
+    <option value="light">Light</option>
+    <option value="blue">Blue</option>
+  </select>
+
+  <div class="label">Graph Range</div>
+  <div style="display:flex;gap:8px;">
+    <input id="xmin" class="input" placeholder="xmin (-10)" value="-10">
+    <input id="xmax" class="input" placeholder="xmax (10)" value="10">
+  </div>
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <input id="points" class="input" placeholder="points (200)" value="200">
+  </div>
+
+  <hr style="border:0;border-top:1px solid rgba(255,255,255,0.06);margin:12px 0;">
+
+  <h2>About</h2>
+  <p><strong>Version:</strong> 8.0.0.8.S</p>
+  <p><strong>Build:</strong> Aditya Gupta</p>
+  <p>The Differentiation Calculator.</p>
+  <p><strong>College:</strong> Radhey Hari Govt. Post Graduate College, Kashipur</p>
+  <p style="margin-top:16px;"><strong>Submitted To:</strong><br>Dr. Vibhor Tomar</p>
+
+  <!-- Teacher photo -->
+  <div style="display:flex;justify-content:center;margin-top:8px;">
+    <img src="Teacher.jpg" alt="Teacher Photo" style="width:100px;height:auto;border-radius:10px;border:3px solid #14ffb0;padding:2px;background:#000;">
+  </div>
+
+  <p><strong>Submitted By:</strong> Aditya Gupta <br>Roll Number: 2230290020005<br>Enrollment Number: KU23118870</p>
+
+  <!-- Student photo -->
+  <div style="display:flex;justify-content:center;margin-top:8px;">
+    <img src="My.jpg" alt="Student Photo" style="width:100px;height:auto;border-radius:10px;border:3px solid #14ffb0;padding:2px;background:#000;">
+  </div>
+
+  <hr style="border:0;border-top:1px solid rgba(255,255,255,0.06);margin:12px 0;">
+  <div style="display:flex;gap:8px;">
+    <button id="closeSidebar" class="icon-btn" style="flex:1">Close</button>
+    <button id="resetHistory" class="icon-btn">Clear History</button>
+  </div>
+</div>
+
+<!-- App content -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div id="hamburger" class="hamburger" aria-label="Open menu" role="button">
+      <span class="lines">
+        <span></span><span></span><span></span>
+      </span>
+    </div>
+    <div class="app-title">Equation Differentiator</div>
+    <div class="header-right"><button id="screenshotBtn" class="icon-btn" title="Export PDF">PDF</button></div>
+  </div>
+
+  <div class="card">
+    <div class="tools">
+      <select id="mode" class="input mode-select" title="Choose mode">
+        <option value="differentiate">Differentiate</option>
+        <option value="integrate">Integrate</option>
+        <option value="limit">Limit</option>
+        <option value="taylor">Taylor Series</option>
+      </select>
+      <button id="voiceBtn" class="icon-btn" title="Voice input">🎤</button>
+      <button id="copyBtn" class="icon-btn" title="Copy result">Copy</button>
+    </div>
+
+    <div class="field" style="margin-top:8px;">
+      <input id="expr" class="input" placeholder="Enter function e.g. x^2 + 3*x + 2" value="x^2">
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <input id="variable" class="input" placeholder="variable (x)" value="x" style="flex:1">
+        <input id="degree" class="input" type="number" min="1" placeholder="degree" value="1" style="width:96px">
+      </div>
+      <div id="extraControls" style="margin-top:6px;">
+        <!-- controls that appear for limit or taylor -->
+      </div>
+
+      <div class="symbols" aria-hidden="false">
+        <button class="sym-btn" data-sym="*">×</button>
+        <button class="sym-btn" data-sym="^">^</button>
+        <button class="sym-btn" data-sym="+">+</button>
+        <button class="sym-btn" data-sym="-">-</button>
+        <button class="sym-btn" data-sym="/">/</button>
+        <button class="sym-btn" data-sym="(">(</button>
+        <button class="sym-btn" data-sym=")">)</button>
+        <button class="sym-btn" data-sym="sqrt(">√</button>
+        <button class="sym-btn" data-sym="sin(">sin</button>
+        <button class="sym-btn" data-sym="cos(">cos</button>
+        <button class="sym-btn" data-sym="tan(">tan</button>
+        <button class="sym-btn" data-sym="exp(">exp</button>
+      </div>
+
+      <button id="computeBtn" class="btn-primary">Compute</button>
+    </div>
+  </div>
+
+  <div class="card result-area">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:800;color:var(--accent)">Result</div>
+      <div style="font-size:12px;color:var(--muted)" id="modeLabel">Mode: Differentiate</div>
+    </div>
+    <div id="resultBox" class="result-box">—</div>
+    <div style="margin-top:6px;font-weight:700;color:var(--accent2)">Steps</div>
+    <div id="steps" class="steps">Press Compute to see steps.</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:800;color:var(--accent)">Graph</div>
+      <div style="font-size:12px;color:var(--muted)">Pan & Zoom enabled</div>
+    </div>
+    <div class="plot-wrap">
+      <canvas id="plotCanvas"></canvas>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="resetZoom" class="example-btn" style="flex:1">Reset Zoom</button>
+      <button id="saveFav" class="example-btn" style="flex:1">Save Favorite</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:800;color:var(--accent)">History</div>
+      <div style="font-size:12px;color:var(--muted)">Tap an item to re-run</div>
+    </div>
+    <div id="historyList" class="list"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;">
+    <button id="quizBtn" class="example-btn" style="flex:1">Quiz Mode</button>
+    <button id="themeToggle" class="example-btn" style="flex:1">Toggle Theme</button>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>
+
+<script>
+/* ======================
+   Utilities & DOM refs
+   ====================== */
+const hamburger = document.getElementById('hamburger');
+const sidebar = document.getElementById('sidebar');
+const closeSidebar = document.getElementById('closeSidebar');
+const resetHistory = document.getElementById('resetHistory');
+const modeSelect = document.getElementById('mode');
+const modeLabel = document.getElementById('modeLabel');
+const exprInput = document.getElementById('expr');
+const variableInput = document.getElementById('variable');
+const degreeInput = document.getElementById('degree');
+const computeBtn = document.getElementById('computeBtn');
+const resultBox = document.getElementById('resultBox');
+const stepsDiv = document.getElementById('steps');
+const pointsInput = document.getElementById('points');
+const xminInput = document.getElementById('xmin');
+const xmaxInput = document.getElementById('xmax');
+const plotCanvas = document.getElementById('plotCanvas').getContext('2d');
+const historyList = document.getElementById('historyList');
+const saveFavBtn = document.getElementById('saveFav');
+const resetZoomBtn = document.getElementById('resetZoom');
+const themeSelect = document.getElementById('themeSelect');
+const screenshotBtn = document.getElementById('screenshotBtn');
+const copyBtn = document.getElementById('copyBtn');
+const voiceBtn = document.getElementById('voiceBtn');
+const quizBtn = document.getElementById('quizBtn');
+const extraControls = document.getElementById('extraControls');
+const themeToggle = document.getElementById('themeToggle');
+
+/* ======================
+   Sidebar behavior
+   ====================== */
+hamburger.addEventListener('click', ()=>{
+  hamburger.classList.toggle('open');
+  sidebar.classList.toggle('open');
+});
+closeSidebar.addEventListener('click', ()=>{hamburger.classList.remove('open');sidebar.classList.remove('open');});
+window.addEventListener('click', (e)=>{
+  if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+    hamburger.classList.remove('open'); sidebar.classList.remove('open');
+  }
+});
+resetHistory.addEventListener('click', ()=>{localStorage.removeItem('diff_history');renderHistory();alert('History cleared.');});
+
+/* ======================
+   Theme handling
+   ====================== */
+function applyTheme(name) {
+  if (name === 'dark') {
+    document.documentElement.style.setProperty('--bg','#0e0f0f');
+    document.documentElement.style.setProperty('--panel','#0b0b0b');
+    document.documentElement.style.setProperty('--accent','#14ffb0');
+    document.documentElement.style.setProperty('--accent2','#ff57c7');
+    document.documentElement.style.setProperty('--text','#bfc7c3');
+    document.body.style.background='linear-gradient(180deg,#050505,#0d0d0d)';
+  } else if (name === 'light') {
+    document.documentElement.style.setProperty('--bg','#ffffff');
+    document.documentElement.style.setProperty('--panel','#f6f7f9');
+    document.documentElement.style.setProperty('--accent','#007acc');
+    document.documentElement.style.setProperty('--accent2','#cc007a');
+    document.documentElement.style.setProperty('--text','#222');
+    document.body.style.background='#f6f7f9';
+  } else if (name === 'blue') {
+    document.documentElement.style.setProperty('--bg','#001f3f');
+    document.documentElement.style.setProperty('--panel','#002b55');
+    document.documentElement.style.setProperty('--accent','#00d1ff');
+    document.documentElement.style.setProperty('--accent2','#ff00d4');
+    document.documentElement.style.setProperty('--text','#e0f7ff');
+    document.body.style.background='linear-gradient(180deg,#001f3f,#001a2d)';
+  }
+}
+themeSelect.value = 'dark';
+applyTheme('dark');
+themeSelect.addEventListener('change', ()=> applyTheme(themeSelect.value));
+themeToggle.addEventListener('click', ()=>{
+  const next = themeSelect.value === 'dark' ? 'light' : themeSelect.value === 'light' ? 'blue' : 'dark';
+  themeSelect.value = next; applyTheme(next);
+});
+
+/* ======================
+   Symbol insertion
+   ====================== */
+document.querySelectorAll('.sym-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const s = b.dataset.sym || b.textContent;
+    insertAtCursor(exprInput, s);
+    exprInput.focus();
+  });
+});
+function insertAtCursor(input, text) {
+  const start = input.selectionStart || 0;
+  const end = input.selectionEnd || 0;
+  const val = input.value;
+  input.value = val.substring(0, start) + text + val.substring(end);
+  input.selectionStart = input.selectionEnd = start + text.length;
+}
+
+/* ======================
+   Chart setup with pan/zoom
+   ====================== */
+let chart = null;
+function createChart(xs, ysFunc, ysDeriv) {
+  if (chart) chart.destroy();
+  const datasets = [];
+  if (ysFunc) datasets.push({label:'f(x)', data: ysFunc, borderColor: getCss('--accent'), pointRadius:0, borderWidth:2, tension:0.25});
+  if (ysDeriv) datasets.push({label:'g(x)', data: ysDeriv, borderColor: getCss('--accent2'), pointRadius:0, borderWidth:2, tension:0.25});
+  chart = new Chart(plotCanvas, {
+    type:'line',
+    data:{labels: xs, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{ x: { ticks: {callback: (v,i)=> xs[i].toFixed(2)} } },
+      plugins:{
+        legend:{labels:{color:getCss('--text')}},
+        zoom:{
+          pan: {enabled:true, mode:'x', modifierKey:'shift'},
+          zoom: {wheel:{enabled:true}, pinch:{enabled:true}, mode:'x'}
+        }
+      },
+      elements:{point:{radius:0}}
+    },
+    plugins: [ChartZoom]
+  });
+}
+function resetChartZoom() { if (chart) chart.resetZoom(); }
+resetZoomBtn.addEventListener('click', resetChartZoom);
+
+/* get css variable */
+function getCss(name) {return getComputedStyle(document.documentElement).getPropertyValue(name);}
+
+/* ======================
+   Math compute functions
+   ====================== */
+function safeParse(expr) {
+  // replace common unicode signs
+  return expr.replace(/×/g,'*').replace(/√/g,'sqrt');
+}
+
+function computeDifferentiate(expr, variable, degree=1) {
+  let parsed = math.parse(expr);
+  let current = parsed;
+  for (let i=0;i<degree;i++) current = math.derivative(current, variable);
+  return math.simplify(current).toString({parenthesis:'auto'});
+}
+
+function computeIntegrate(expr, variable) {
+  // math.js has 'integral' in some versions — we'll attempt symbolic integration via algebraic antiderivative where possible
+  try {
+    // Try simple reverse of derivative by integrating using math.integral if present
+    if (math.integral) {
+      const node = math.parse(expr);
+      const res = math.integral(node, variable);
+      return res.toString({parenthesis:'auto'});
+    } else {
+      // Fallback: try manual integrate for simple polynomials using power rule
+      const node = math.parse(expr);
+      // We'll attempt to examine as polynomial a*x^n form
+      return 'Integral not available symbolically in this build.';
+    }
+  } catch (e) {
+    return 'Integration error: ' + e.message;
+  }
+}
+
+function computeLimit(expr, variable, approach=0, direction='both') {
+  try {
+    // numeric approximation approach from left/right
+    const h = 1e-6;
+    let val;
+    if (direction === 'both') {
+      const a = math.evaluate(expr, {[variable]: approach - h});
+      const b = math.evaluate(expr, {[variable]: approach + h});
+      if (Math.abs(a - b) < 1e-4) val = (a + b)/2; else val = NaN;
+    } else if (direction === 'left') {
+      val = math.evaluate(expr, {[variable]: approach - h});
+    } else {
+      val = math.evaluate(expr, {[variable]: approach + h});
+    }
+    return isFinite(val) ? String(val) : 'Limit seems undefined / numeric unstable';
+  } catch (e) {
+    return 'Limit error: ' + e.message;
+  }
+}
+
+function computeTaylor(expr, variable, at = 0, terms = 5) {
+  try {
+    // Use series expansion via numeric derivatives to build Taylor polynomial
+    const n = parseInt(terms)||5;
+    let polyParts = [];
+    for (let k=0;k<n;k++) {
+      const deriv = math.derivative(expr, variable, {simplify: true, implicit: false}); // math.derivative doesn't accept order param in older builds
+      // We'll approximate derivative at 'at' numerically:
+    }
+    // fallback simplified message
+    return 'Taylor expansion not available symbolically offline. (Numeric series possible—ask to enable)';
+  } catch (e) {
+    return 'Taylor error: '+e.message;
+  }
+}
+
+/* ======================
+   Plot builder (numerical sampling)
+   ====================== */
+function buildPlot(expr, variable='x', xmin=-10, xmax=10, points=200, showDerivative=true) {
+  const xs = [];
+  const ys = [];
+  const ysDer = [];
+  const compiled = (() => { try { return math.compile(expr); } catch(e){ return null; }})();
+  let derivativeCompiled = null;
+  try {
+    const derivNode = math.derivative(math.parse(expr), variable);
+    derivativeCompiled = derivNode.compile();
+  } catch(e) { derivativeCompiled = null; }
+  for (let i=0;i<points;i++){
+    const x = xmin + (xmax - xmin) * (i/(points-1));
+    xs.push(Number(x.toFixed(6)));
+    if (compiled) {
+      try { const v = compiled.evaluate({[variable]: x}); ys.push(isFinite(v) ? Number(v) : null); } catch(e){ ys.push(null); }
+    } else ys.push(null);
+    if (derivativeCompiled && showDerivative) {
+      try { const dv = derivativeCompiled.evaluate({[variable]: x}); ysDer.push(isFinite(dv) ? Number(dv) : null); } catch(e){ ysDer.push(null); }
+    } else ysDer.push(null);
+  }
+  createChart(xs, ys, ysDer);
+}
+
+/* ======================
+   History & Favorites (localStorage)
+   ====================== */
+function saveHistory(item) {
+  const h = JSON.parse(localStorage.getItem('diff_history')||'[]');
+  h.unshift(item);
+  if (h.length>50) h.pop();
+  localStorage.setItem('diff_history', JSON.stringify(h));
+  renderHistory();
+}
+function renderHistory() {
+  const h = JSON.parse(localStorage.getItem('diff_history')||'[]');
+  historyList.innerHTML = '';
+  h.forEach((it, idx)=>{
+    const btn = document.createElement('button');
+    btn.textContent = `[${it.mode}] ${it.expr}`;
+    btn.addEventListener('click', ()=> {
+      exprInput.value = it.expr; modeSelect.value = it.mode; variableInput.value = it.variable || 'x';
+      degreeInput.value = it.degree || 1; computeBtn.click();
+    });
+    historyList.appendChild(btn);
+  });
+}
+renderHistory();
+
+/* ======================
+   Compute button behavior
+   ====================== */
+computeBtn.addEventListener('click', ()=>{
+  const mode = modeSelect.value;
+  const expr = safeParse(exprInput.value.trim());
+  const variable = (variableInput.value || 'x').trim() || 'x';
+  const degree = parseInt(degreeInput.value) || 1;
+  const xmin = parseFloat(xminInput.value) || -10;
+  const xmax = parseFloat(xmaxInput.value) || 10;
+  const points = parseInt(pointsInput.value) || 200;
+
+  modeLabel.textContent = 'Mode: ' + capitalize(mode);
+  if (!expr) { resultBox.textContent = 'Please enter an expression.'; return; }
+
+  try {
+    if (mode === 'differentiate') {
+      const res = computeDifferentiate(expr, variable, degree);
+      resultBox.innerHTML = renderMathInline(res);
+      stepsDiv.textContent = `d^${degree}/${variable}^${degree} of ${expr} = ${res}`;
+      saveHistory({mode, expr, variable, degree, time:Date.now()});
+      buildPlot(expr, variable, xmin, xmax, points, true);
+    } else if (mode === 'integrate') {
+      const res = computeIntegrate(expr, variable);
+      resultBox.innerHTML = renderMathInline(res);
+      stepsDiv.textContent = `∫ ${expr} d${variable} = ${res} + C`;
+      saveHistory({mode, expr, variable, degree:1, time:Date.now()});
+      buildPlot(expr, variable, xmin, xmax, points, false);
+    } else if (mode === 'limit') {
+      // prompt for approach
+      const approach = Number(prompt('Compute limit as variable -> ? (enter value)', '0'));
+      const dir = prompt('Direction? (both / left / right)', 'both');
+      const res = computeLimit(expr, variable, approach, dir);
+      resultBox.innerHTML = renderMathInline(String(res));
+      stepsDiv.textContent = `Limit of ${expr} as ${variable} → ${approach} (${dir}) = ${res}`;
+      saveHistory({mode, expr, variable, degree:1, time:Date.now()});
+      buildPlot(expr, variable, xmin, xmax, points, true);
+    } else if (mode === 'taylor') {
+      const at = Number(prompt('Center point for Taylor series (a):', '0'));
+      const terms = Number(prompt('Number of terms:', '5'));
+      // simple numeric Taylor via derivatives (we provide numeric polynomial)
+      const tpoly = numericTaylor(expr, variable, at, terms);
+      resultBox.innerHTML = renderMathInline(tpoly.str);
+      stepsDiv.textContent = `Taylor around ${at} with ${terms} terms (approx numeric): ${tpoly.str}`;
+      saveHistory({mode, expr, variable, degree:terms, time:Date.now()});
+      buildPlot(expr, variable, xmin, xmax, points, true);
+    }
+  } catch (e) {
+    resultBox.textContent = 'Error: ' + (e && e.message ? e.message : String(e));
+  }
+});
+
+/* numeric Taylor series builder (uses numeric derivatives) */
+function numericTaylor(expr, variable, at=0, terms=5) {
+  try {
+    const compiled = math.compile(expr);
+    const parts = [];
+    for (let n=0;n<terms;n++){
+      // numeric nth derivative via finite differences
+      const h = 1e-4;
+      let derivativeValue;
+      if (n === 0) derivativeValue = compiled.evaluate({[variable]: at});
+      else {
+        // use central difference for nth derivative approx by recursively differentiating numeric values is expensive.
+        // We'll approximate n-th derivative by using math.derivative if available
+        try {
+          const node = math.parse(expr);
+          const dnode = (new Array(n)).fill(0).reduce((acc)=>math.derivative(acc, variable), node);
+          derivativeValue = math.evaluate(dnode.toString(), {[variable]: at});
+        } catch (_) {
+          // fallback finite difference for first derivative only
+          derivativeValue = (compiled.evaluate({[variable]: at+h}) - compiled.evaluate({[variable]: at-h})) / (2*h);
+        }
+      }
+      const coeff = derivativeValue / math.factorial(n);
+      const termStr = `${coeff.toFixed(6)} * (${variable} - ${at})^${n}`;
+      parts.push(termStr);
+    }
+    const str = parts.join(' + ');
+    return {str, parts};
+  } catch (e) {
+    return {str:'Taylor unavailable: ' + e.message, parts:[]};
+  }
+}
+
+/* ======================
+   Render Math (KaTeX inline)
+   ====================== */
+function renderMathInline(text) {
+  try {
+    // if KaTeX is available, render, else return raw text
+    if (window.katex) {
+      // wrap with $...$ for inline
+      const container = document.createElement('span');
+      try {
+        katex.render(text, container, {throwOnError:false});
+        return container.innerHTML;
+      } catch (err) {
+        return escapeHtml(text);
+      }
+    } else return escapeHtml(text);
+  } catch (e) { return escapeHtml(text); }
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ======================
+   Build initial plot with default expr
+   ====================== */
+(function init(){
+  // Ensure ChartZoom is accessible (some CDN builds attach plugin differently)
+  if (typeof Chart !== 'undefined' && typeof chartZoom !== 'undefined') {
+    // plugin registered
+  }
+  buildPlot(exprInput.value, 'x', parseFloat(xminInput.value), parseFloat(xmaxInput.value), parseInt(pointsInput.value));
+})();
+
+/* ======================
+   History & favorites actions
+   ====================== */
+saveFavBtn.addEventListener('click', ()=>{
+  const favs = JSON.parse(localStorage.getItem('diff_favs')||'[]');
+  favs.unshift({expr: exprInput.value, mode: modeSelect.value, time: Date.now()});
+  localStorage.setItem('diff_favs', JSON.stringify(favs));
+  alert('Saved to favorites.');
+});
+
+/* ======================
+   Export to PDF (jsPDF)
+   ====================== */
+screenshotBtn.addEventListener('click', async ()=>{
+  try {
+    // using jsPDF to produce simple PDF with text + canvas snapshot
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('jsPDF not available. Place jspdf.umd.min.js in same folder for offline use.'); return; }
+    const pdf = new jsPDF({unit:'px',format:'a4'});
+    pdf.setFontSize(18);
+    pdf.text('Equation Differentiator - Result', 20, 30);
+    pdf.setFontSize(12);
+    pdf.text('Expression: ' + exprInput.value, 20, 55);
+    pdf.text('Result: ', 20, 75);
+    // add result HTML rendered text
+    const resultText = resultBox.innerText || resultBox.textContent || '';
+    pdf.text(resultText, 20, 95, {maxWidth: 560});
+    // include chart image by converting canvas to data URL
+    if (chart && chart.canvas) {
+      const dataUrl = chart.canvas.toDataURL('image/png', 1.0);
+      pdf.addImage(dataUrl, 'PNG', 20, 140, 560, 200);
+    }
+    pdf.save('differentiation_result.pdf');
+  } catch (e) {
+    alert('PDF error: ' + e.message);
+  }
+});
+
+/* ======================
+   Copy to clipboard
+   ====================== */
+copyBtn.addEventListener('click', async ()=>{
+  try {
+    const t = resultBox.innerText || resultBox.textContent || '';
+    await navigator.clipboard.writeText(t);
+    alert('Result copied to clipboard.');
+  } catch (e) {
+    alert('Copy failed: ' + e.message);
+  }
+});
+
+/* ======================
+   Voice input (Web Speech API)
+   ====================== */
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRec();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (ev) => {
+    const text = ev.results[0][0].transcript;
+    exprInput.value += ' ' + text;
+  };
+  recognition.onerror = (e) => { console.log('Speech error', e); alert('Speech recognition error.'); };
+}
+voiceBtn.addEventListener('click', ()=>{
+  if (!recognition) { alert('SpeechRecognition not supported in this browser/device.'); return; }
+  recognition.start();
+});
+
+/* ======================
+   Quiz mode (simple)
+   ====================== */
+quizBtn.addEventListener('click', ()=>{
+  const questions = [
+    {q:'Differentiate x^2', expr:'x^2', ans:'2*x'},
+    {q:'Differentiate sin(x)', expr:'sin(x)', ans:'cos(x)'},
+    {q:'Differentiate e^x', expr:'exp(x)', ans:'exp(x)'},
+    {q:'Differentiate x^3', expr:'x^3', ans:'3*x^2'},
+    {q:'Differentiate ln(x)', expr:'log(x)', ans:'1/x'}
+  ];
+  let score = 0;
+  const n = Number(prompt('How many questions (1-5)?', '3')) || 3;
+  for (let i=0;i<n;i++){
+    const qi = questions[Math.floor(Math.random()*questions.length)];
+    const answer = prompt(qi.q, '');
+    // simple compare using math.simplify difference
+    try {
+      const correct = math.simplify(qi.ans).toString();
+      const user = math.simplify(answer || '').toString();
+      if (correct === user) { score++; alert('Correct!'); } else {
+        alert('Wrong. Correct: ' + correct + ' Your: ' + user);
+      }
+    } catch (e) { alert('Invalid answer.'); }
+  }
+  alert('Quiz finished. Score: ' + score + '/' + n);
+});
+
+/* ======================
+   Utilities
+   ====================== */
+function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ======================
+   Keyboard: Enter to compute
+   ====================== */
+exprInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); computeBtn.click(); } });
+
+/* ======================
+   Dynamic UI for mode-specific controls
+   ====================== */
+modeSelect.addEventListener('change', ()=>{
+  const m = modeSelect.value;
+  modeLabel.textContent = 'Mode: ' + capitalize(m);
+  extraControls.innerHTML = '';
+  if (m === 'limit') {
+    const lbl = document.createElement('div'); lbl.textContent = 'Limit center (enter after clicking compute)'; lbl.className='small-text';
+    extraControls.appendChild(lbl);
+  } else if (m === 'taylor') {
+    const lbl = document.createElement('div'); lbl.className='small-text';
+    lbl.innerHTML = 'Taylor uses numeric approximation (may be approximate).';
+    extraControls.appendChild(lbl);
+  }
+});
+
+/* ======================
+   Render math for initial result
+   ====================== */
+resultBox.innerHTML = renderMathInline(''); // blank
+</script>
+</body>
+</html>
